@@ -1,15 +1,15 @@
 package com.callback.app.sms
 
 import android.content.Context
-import android.telephony.SmsManager
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.callback.app.data.AppDatabase
 import com.callback.app.data.TextedNumber
 import com.callback.app.detect.MissedCallChecker
+import com.callback.app.phone.PhoneNumberNormalizer
 
 /**
- * Sends an auto-text for a missed call (stub message body).
+ * Sends an auto-text for a missed call.
  * Persists [TextedNumber] when send is attempted.
  */
 class AutoTextWorker(
@@ -18,7 +18,9 @@ class AutoTextWorker(
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val phoneNumber = inputData.getString(KEY_PHONE_NUMBER) ?: return Result.failure()
+        val rawNumber = inputData.getString(KEY_PHONE_NUMBER) ?: return Result.failure()
+        val region = PhoneNumberNormalizer.defaultRegion(applicationContext)
+        val phoneNumber = PhoneNumberNormalizer.toE164(rawNumber, region) ?: rawNumber
         val message = inputData.getString(KEY_MESSAGE) ?: DEFAULT_MESSAGE
         val now = System.currentTimeMillis()
 
@@ -28,9 +30,8 @@ class AutoTextWorker(
             return Result.success()
         }
 
-        @Suppress("DEPRECATION")
-        val smsManager = SmsManager.getDefault()
-        smsManager.sendTextMessage(phoneNumber, null, message, null, null)
+        applicationContext.requireSmsManager()
+            .sendTextMessage(phoneNumber, null, message, null, null)
 
         db.textedNumberDao().upsert(
             TextedNumber(phoneNumber = phoneNumber, lastTextedAtEpochMs = now),
