@@ -58,4 +58,56 @@ object MissedCallLogReader {
         }
         return null
     }
+
+    fun listUnprocessedMissedCalls(
+        resolver: ContentResolver,
+        processedCallLogIds: Set<Long>,
+        defaultRegion: String,
+        minCallLogIdExclusive: Long = 0L,
+        nowEpochMs: Long = System.currentTimeMillis(),
+        lookbackMs: Long = DEFAULT_LOOKBACK_MS,
+    ): List<MissedCallLogEntry> {
+        val sinceMs = nowEpochMs - lookbackMs
+        val projection = arrayOf(
+            CallLog.Calls._ID,
+            CallLog.Calls.NUMBER,
+            CallLog.Calls.DATE,
+            CallLog.Calls.TYPE,
+        )
+        val selection = buildString {
+            append("${CallLog.Calls.TYPE} = ? AND ${CallLog.Calls.DATE} >= ?")
+            append(" AND ${CallLog.Calls._ID} > ?")
+        }
+        val selectionArgs = arrayOf(
+            CallLog.Calls.MISSED_TYPE.toString(),
+            sinceMs.toString(),
+            minCallLogIdExclusive.toString(),
+        )
+        val sortOrder = "${CallLog.Calls.DATE} ASC"
+        val results = mutableListOf<MissedCallLogEntry>()
+        resolver.query(
+            CallLog.Calls.CONTENT_URI,
+            projection,
+            selection,
+            selectionArgs,
+            sortOrder,
+        )?.use { cursor ->
+            val idIdx = cursor.getColumnIndexOrThrow(CallLog.Calls._ID)
+            val numberIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
+            val dateIdx = cursor.getColumnIndexOrThrow(CallLog.Calls.DATE)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idIdx)
+                if (id in processedCallLogIds) continue
+                val logNumber = cursor.getString(numberIdx) ?: continue
+                results.add(
+                    MissedCallLogEntry(
+                        callLogId = id,
+                        phoneNumber = logNumber,
+                        dateEpochMs = cursor.getLong(dateIdx),
+                    ),
+                )
+            }
+        }
+        return results
+    }
 }

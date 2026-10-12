@@ -26,6 +26,9 @@ interface LeadDao {
     @Query("UPDATE leads SET replyText = :replyText WHERE id = :leadId")
     suspend fun updateReplyText(leadId: Long, replyText: String)
 
+    @Query("UPDATE leads SET createdAtEpochMs = :atMs WHERE id = :leadId")
+    suspend fun touchLead(leadId: Long, atMs: Long)
+
     @Query("DELETE FROM leads WHERE id = :leadId")
     suspend fun delete(leadId: Long)
 }

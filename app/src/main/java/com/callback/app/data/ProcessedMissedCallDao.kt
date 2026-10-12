@@ -12,4 +12,10 @@ interface ProcessedMissedCallDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(processed: ProcessedMissedCall): Long
+
+    @Query("SELECT callLogId FROM processed_missed_calls")
+    suspend fun getAllCallLogIds(): List<Long>
+
+    @Query("SELECT MAX(callLogId) FROM processed_missed_calls")
+    suspend fun maxCallLogId(): Long?
 }

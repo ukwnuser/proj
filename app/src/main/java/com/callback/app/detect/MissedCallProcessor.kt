@@ -2,24 +2,19 @@ package com.callback.app.detect
 
 import com.callback.app.data.Lead
 import com.callback.app.data.ProcessedMissedCall
-import com.callback.app.detect.TextRepeatPolicy
 
-/**
- * Pure orchestration for missed-call handling (testable without Android framework).
- */
-class MissedCallProcessor(
-    private val repeatPolicyMs: Long = TextRepeatPolicy.repeatWindowMs,
-) {
-    data class Decision(
-        val shouldCreateLead: Boolean,
-        val skipReason: SkipReason? = null,
-    )
+/** Pure orchestration for missed-call handling (testable without Android framework). */
+class MissedCallProcessor {
+    sealed class OpenLeadAction {
+        data object CreateNew : OpenLeadAction()
+        data class ReuseExisting(val leadId: Long) : OpenLeadAction()
+    }
 
     enum class SkipReason {
         NOT_CONFIRMED_IN_CALL_LOG,
         ALREADY_PROCESSED,
         KNOWN_CONTACT,
-        OPEN_LEAD_EXISTS,
+        CONTACT_CHECK_INDETERMINATE,
         INVALID_NUMBER,
     }
 
@@ -32,22 +27,8 @@ class MissedCallProcessor(
         return null
     }
 
-    fun shouldCreateLead(
-        isKnownContact: Boolean,
-        openLead: Lead?,
-        nowEpochMs: Long,
-    ): Decision {
-        if (isKnownContact) {
-            return Decision(shouldCreateLead = false, skipReason = SkipReason.KNOWN_CONTACT)
-        }
-        if (openLead != null && isWithinRepeatWindow(openLead.createdAtEpochMs, nowEpochMs)) {
-            return Decision(shouldCreateLead = false, skipReason = SkipReason.OPEN_LEAD_EXISTS)
-        }
-        return Decision(shouldCreateLead = true)
-    }
-
-    fun isWithinRepeatWindow(leadCreatedAtEpochMs: Long, nowEpochMs: Long): Boolean =
-        nowEpochMs - leadCreatedAtEpochMs < repeatPolicyMs
+    fun resolveOpenLead(openLead: Lead?): OpenLeadAction =
+        if (openLead == null) OpenLeadAction.CreateNew else OpenLeadAction.ReuseExisting(openLead.id)
 
     fun toProcessedRecord(entry: MissedCallLogEntry, e164Phone: String): ProcessedMissedCall =
         ProcessedMissedCall(

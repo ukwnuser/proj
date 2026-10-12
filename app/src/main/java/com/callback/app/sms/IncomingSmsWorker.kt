@@ -7,7 +7,7 @@ import com.callback.app.data.AppDatabase
 import com.callback.app.phone.PhoneNumberNormalizer
 import com.callback.app.util.SafeLog
 
-/** Handles inbound SMS and stores positive replies on open leads. */
+/** Handles inbound SMS and stores replies on open leads. */
 class IncomingSmsWorker(
     appContext: Context,
     params: WorkerParameters,
@@ -15,7 +15,12 @@ class IncomingSmsWorker(
 
     override suspend fun doWork(): Result {
         val rawNumber = inputData.getString(KEY_PHONE_NUMBER) ?: return Result.failure()
-        val body = inputData.getString(KEY_MESSAGE_BODY).orEmpty()
+        val body = inputData.getString(KEY_MESSAGE_BODY)
+        val replyText = InboundSmsHandler.replyTextToStore(body)
+        if (replyText == null) {
+            return Result.success()
+        }
+
         val region = PhoneNumberNormalizer.defaultRegion(applicationContext)
         val e164 = PhoneNumberNormalizer.toE164(rawNumber, region) ?: rawNumber
 
@@ -28,12 +33,8 @@ class IncomingSmsWorker(
             return Result.success()
         }
 
-        if (ReplyParser.isPositiveReply(body)) {
-            db.leadDao().updateReplyText(lead.id, body.trim())
-            SafeLog.phoneEvent(TAG, "Stored positive reply on open lead")
-        } else {
-            SafeLog.phoneEvent(TAG, "Inbound SMS: non-positive reply")
-        }
+        db.leadDao().updateReplyText(lead.id, replyText)
+        SafeLog.phoneEvent(TAG, "Stored reply on open lead")
         return Result.success()
     }
 
