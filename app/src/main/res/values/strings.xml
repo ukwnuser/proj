@@ -5,7 +5,10 @@
     <string name="tab_new">New</string>
     <string name="tab_done">Done</string>
     <string name="onboarding_title">Welcome to CallBack</string>
-    <string name="onboarding_body">Grant permissions on the next screen to auto-text missed callers.</string>
+    <string name="onboarding_body">Grant permissions to auto-text missed callers.</string>
     <string name="continue_label">Continue</string>
     <string name="empty_inbox">No leads yet</string>
+    <string name="request_permissions_label">Request Permissions</string>
+    <string name="permissions_denied">Permissions required for auto-texting missed calls. Please enable them in settings.</string>
+    <string name="settings_label">Open Settings</string>
 </resources>
