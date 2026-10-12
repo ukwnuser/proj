@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,11 +24,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -52,11 +55,35 @@ fun InboxScreen(
     modifier: Modifier = Modifier,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var leadPendingDelete by remember { mutableStateOf<Lead?>(null) }
     val tabs = listOf(
         stringResource(R.string.tab_new),
         stringResource(R.string.tab_done),
     )
     val leads = if (selectedTab == 0) newLeads else doneLeads
+
+    leadPendingDelete?.let { lead ->
+        AlertDialog(
+            onDismissRequest = { leadPendingDelete = null },
+            title = { Text(stringResource(R.string.delete_lead_title)) },
+            text = { Text(stringResource(R.string.delete_lead_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDelete(lead)
+                        leadPendingDelete = null
+                    },
+                ) {
+                    Text(stringResource(R.string.delete_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { leadPendingDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -93,7 +120,7 @@ fun InboxScreen(
                         LeadCard(
                             lead = lead,
                             onMarkDone = onMarkDone,
-                            onDelete = onDelete,
+                            onDelete = { leadPendingDelete = it },
                             onCall = onCall,
                         )
                     }
@@ -110,8 +137,6 @@ private fun LeadCard(
     onDelete: (Lead) -> Unit,
     onCall: (Lead) -> Unit,
 ) {
-    val context = LocalContext.current
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -134,10 +159,20 @@ private fun LeadCard(
                     text = lead.phoneNumber,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                lead.replyText?.let { reply ->
+                    Text(
+                        text = reply,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
             }
             Row {
                 IconButton(onClick = { onCall(lead) }) {
-                    Icon(Icons.Default.Call, contentDescription = "Call")
+                    Icon(
+                        Icons.Default.Call,
+                        contentDescription = stringResource(R.string.call_lead),
+                    )
                 }
                 if (!lead.isDone) {
                     IconButton(onClick = { onMarkDone(lead) }) {

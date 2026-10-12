@@ -11,4 +11,9 @@
     <string name="request_permissions_label">Request Permissions</string>
     <string name="permissions_denied">Permissions required for auto-texting missed calls. Please enable them in settings.</string>
     <string name="settings_label">Open Settings</string>
+    <string name="call_lead">Call</string>
+    <string name="delete_lead_title">Delete lead?</string>
+    <string name="delete_lead_message">This lead will be removed from your inbox.</string>
+    <string name="delete_confirm">Delete</string>
+    <string name="cancel">Cancel</string>
 </resources>

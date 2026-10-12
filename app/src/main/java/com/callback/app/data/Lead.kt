@@ -10,4 +10,5 @@ data class Lead(
     val displayName: String? = null,
     val isDone: Boolean = false,
     val createdAtEpochMs: Long,
+    val replyText: String? = null,
 )

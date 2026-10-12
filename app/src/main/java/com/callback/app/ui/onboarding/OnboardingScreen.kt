@@ -1,8 +1,7 @@
 package com.callback.app.ui.onboarding
 
 import android.Manifest
-import android.app.Activity
-import android.content.Context
+import android.os.Build
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -29,14 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import com.callback.app.R
 
-private val REQUIRED_PERMISSIONS = listOf(
-    Manifest.permission.READ_CALL_LOG,
-    Manifest.permission.READ_PHONE_STATE,
-    Manifest.permission.SEND_SMS,
-    Manifest.permission.RECEIVE_SMS,
-    Manifest.permission.READ_CONTACTS,
-    Manifest.permission.POST_NOTIFICATIONS,
-)
+private fun requiredPermissions(): List<String> = buildList {
+    add(Manifest.permission.READ_CALL_LOG)
+    add(Manifest.permission.READ_PHONE_STATE)
+    add(Manifest.permission.SEND_SMS)
+    add(Manifest.permission.RECEIVE_SMS)
+    add(Manifest.permission.READ_CONTACTS)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        add(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
 
 /** Onboarding screen that handles runtime permissions. */
 @Composable
@@ -58,7 +59,7 @@ fun OnboardingScreen(
     }
 
     LaunchedEffect(Unit) {
-        hasPermissions = REQUIRED_PERMISSIONS.all {
+        hasPermissions = requiredPermissions().all {
             ActivityCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
         }
     }
@@ -98,7 +99,7 @@ fun OnboardingScreen(
             }
         } else if (!hasPermissions) {
             Button(
-                onClick = { permissionLauncher.launch(REQUIRED_PERMISSIONS.toTypedArray()) },
+                onClick = { permissionLauncher.launch(requiredPermissions().toTypedArray()) },
             ) {
                 Text(stringResource(R.string.request_permissions_label))
             }

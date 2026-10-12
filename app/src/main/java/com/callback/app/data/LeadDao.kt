@@ -20,8 +20,11 @@ interface LeadDao {
     @Query("UPDATE leads SET isDone = 1 WHERE id = :leadId")
     suspend fun markAsDone(leadId: Long)
 
-    @Query("SELECT * FROM leads WHERE phoneNumber = :phoneNumber LIMIT 1")
+    @Query("SELECT * FROM leads WHERE phoneNumber = :phoneNumber AND isDone = 0 LIMIT 1")
     suspend fun findByPhoneNumber(phoneNumber: String): Lead?
+
+    @Query("UPDATE leads SET replyText = :replyText WHERE id = :leadId")
+    suspend fun updateReplyText(leadId: Long, replyText: String)
 
     @Query("DELETE FROM leads WHERE id = :leadId")
     suspend fun delete(leadId: Long)

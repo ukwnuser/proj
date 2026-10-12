@@ -4,54 +4,39 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.provider.Telephony
-import android.telephony.SmsMessage
-import android.util.Log
-import com.callback.app.data.AppDatabase
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import com.callback.app.util.SafeLog
 
-/** Receiver for inbound SMS that updates lead status on positive reply. */
+/** Receiver for inbound SMS that enqueues processing for positive replies. */
 class SmsReceiver : BroadcastReceiver() {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action != Telephony.Sms.Intents.SMS_RECEIVED_ACTION) return
 
         val messages = Telephony.Sms.Intents.getMessagesFromIntent(intent)
         if (messages.isNullOrEmpty()) return
 
-        val originatingAddress = messages[0].originatingAddress
+        val originatingAddress = messages[0].originatingAddress ?: return
         val body = messages.joinToString(separator = "") { it.messageBody.orEmpty() }
 
-        Log.d(TAG, "SMS received from $originatingAddress: $body")
+        SafeLog.phoneEvent(TAG, "SMS received")
 
-        if (originatingAddress != null) {
-            scope.launch {
-                handleIncomingSms(context, originatingAddress, body)
-            }
-        }
-    }
+        val workData = Data.Builder()
+            .putString(IncomingSmsWorker.KEY_PHONE_NUMBER, originatingAddress)
+            .putString(IncomingSmsWorker.KEY_MESSAGE_BODY, body)
+            .build()
 
-    private suspend fun handleIncomingSms(context: Context, phoneNumber: String, body: String) {
-        val db = AppDatabase.getInstance(context)
-        val lead = db.leadDao().findByPhoneNumber(phoneNumber)
+        val request = OneTimeWorkRequestBuilder<IncomingSmsWorker>()
+            .setInputData(workData)
+            .addTag(WORK_TAG_PREFIX + originatingAddress.hashCode())
+            .build()
 
-        if (lead == null) {
-            Log.d(TAG, "No lead found for $phoneNumber")
-            return
-        }
-
-        if (ReplyParser.isPositiveReply(body)) {
-            db.leadDao().markAsDone(lead.id)
-            Log.d(TAG, "Marked lead ${lead.id} as done for positive reply from $phoneNumber")
-        } else {
-            Log.d(TAG, "Non-positive reply from $phoneNumber: $body")
-        }
+        WorkManager.getInstance(context.applicationContext).enqueue(request)
     }
 
     companion object {
         private const val TAG = "SmsReceiver"
+        private const val WORK_TAG_PREFIX = "incoming_sms_"
     }
 }
