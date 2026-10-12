@@ -16,4 +16,13 @@ interface LeadDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(lead: Lead): Long
+
+    @Query("UPDATE leads SET isDone = 1 WHERE id = :leadId")
+    suspend fun markAsDone(leadId: Long)
+
+    @Query("SELECT * FROM leads WHERE phoneNumber = :phoneNumber LIMIT 1")
+    suspend fun findByPhoneNumber(phoneNumber: String): Lead?
+
+    @Query("DELETE FROM leads WHERE id = :leadId")
+    suspend fun delete(leadId: Long)
 }

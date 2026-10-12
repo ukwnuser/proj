@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.work.WorkManager
 import com.callback.app.data.AppDatabase
 import com.callback.app.ui.inbox.InboxScreenFromState
 import com.callback.app.ui.onboarding.OnboardingScreen
@@ -18,6 +19,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val database = AppDatabase.getInstance(this)
+        
+        WorkManager.getInstance(this).cancelAllWork()
+        
         setContent {
             CallBackTheme {
                 var showOnboarding by rememberSaveable { mutableStateOf(true) }
@@ -27,6 +31,7 @@ class MainActivity : ComponentActivity() {
                     InboxScreenFromState(
                         newLeadsFlow = database.leadDao().observeNewLeads(),
                         doneLeadsFlow = database.leadDao().observeDoneLeads(),
+                        database = database,
                     )
                 }
             }
