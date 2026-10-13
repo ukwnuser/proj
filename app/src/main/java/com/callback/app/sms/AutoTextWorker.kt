@@ -10,7 +10,7 @@ import com.callback.app.phone.PhoneNumberNormalizer
 
 /**
  * Sends an auto-text for a missed call.
- * Persists [TextedNumber] when send is attempted.
+ * Records [TextedNumber] before send so a retry cannot double-text.
  */
 class AutoTextWorker(
     appContext: Context,
@@ -26,16 +26,16 @@ class AutoTextWorker(
 
         val db = AppDatabase.getInstance(applicationContext)
         val texted = db.textedNumberDao().findByPhoneNumber(phoneNumber)
-        if (!MissedCallChecker().shouldAutoText(texted, now)) {
-            return Result.success()
+        when (AutoTextSendPlan.action(MissedCallChecker().shouldAutoText(texted, now))) {
+            AutoTextSendPlan.Action.SKIP -> return Result.success()
+            AutoTextSendPlan.Action.RECORD_THEN_SEND -> {
+                db.textedNumberDao().upsert(
+                    TextedNumber(phoneNumber = phoneNumber, lastTextedAtEpochMs = now),
+                )
+                applicationContext.requireSmsManager()
+                    .sendTextMessage(phoneNumber, null, message, null, null)
+            }
         }
-
-        applicationContext.requireSmsManager()
-            .sendTextMessage(phoneNumber, null, message, null, null)
-
-        db.textedNumberDao().upsert(
-            TextedNumber(phoneNumber = phoneNumber, lastTextedAtEpochMs = now),
-        )
         return Result.success()
     }
 

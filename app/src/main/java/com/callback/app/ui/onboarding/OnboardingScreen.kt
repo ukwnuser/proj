@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +28,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import com.callback.app.R
+import com.callback.app.detect.CallLogWatermarkSeeder
+import kotlinx.coroutines.launch
 
 private fun requiredPermissions(): List<String> = buildList {
     add(Manifest.permission.READ_CALL_LOG)
@@ -46,6 +49,7 @@ fun OnboardingScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var hasPermissions by remember { mutableStateOf(false) }
     var showRationale by remember { mutableStateOf(false) }
 
@@ -104,7 +108,14 @@ fun OnboardingScreen(
                 Text(stringResource(R.string.request_permissions_label))
             }
         } else {
-            Button(onClick = onContinue) {
+            Button(
+                onClick = {
+                    scope.launch {
+                        CallLogWatermarkSeeder.seedFromCurrentCallLog(context)
+                        onContinue()
+                    }
+                },
+            ) {
                 Text(stringResource(R.string.continue_label))
             }
         }
